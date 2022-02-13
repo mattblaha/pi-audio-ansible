@@ -36,6 +36,7 @@
         - pulseaudio
         - pulseaudio-module-zeroconf
         - shairport-sync
+        - swh-plugins
       state: latest
 
   - name: Give shairport access to PulseAudio
