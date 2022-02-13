@@ -1,0 +1,107 @@
+---
+- hosts: all
+  become: yes
+
+  vars_prompt:
+    - name: hostname
+      prompt: Hostname will be used to identify speaker in PulseAudio and Airplay
+      private: no
+      default: pi-speaker
+
+  vars:
+    network_interface: "{{ ansible_default_ipv4.alias }}"
+    network_address: "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
+    allowed_networks: "{{ network_address | ipaddr('net') }}"
+
+  tasks:
+
+  # the hostname is used by shairport and PulseAudio to advertise
+  # themselves on your network
+  - name: set hostname
+    ansible.builtin.hostname:
+      name: "{{ hostname }}"
+    register: set_hostname
+
+  - name: configure ALSA
+    ansible.builtin.copy:
+      src: config/asound.conf
+      dest: /etc/asound.conf
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Install Packages
+    apt:
+      name:
+        - pulseaudio
+        - pulseaudio-module-zeroconf
+        - shairport-sync
+      state: latest
+
+  - name: Give shairport access to PulseAudio
+    ansible.builtin.user:
+      name: shairport-sync
+      groups: pulse-access
+      append: yes
+
+  - name: diable per-user PulseAudio
+    command:
+      cmd: systemctl --global disable pulseaudio.service pulseaudio.socket
+
+  - name: Configure PulseAudio
+    ansible.builtin.template:
+      src: templates/system.pa.j2
+      dest: /etc/pulse/system.pa
+      owner: root
+      group: root
+      mode: 0644
+    register: pulseconf
+
+  - name: configure PulseAudio unit
+    ansible.builtin.copy:
+      src: config/pulseaudio-system.service
+      dest: /etc/systemd/system/pulseaudio-system.service
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Make sure PulseAudio is running
+    ansible.builtin.systemd:
+      state: "{{ ( set_hostname.changed or pulseconf.changed ) | ternary('restarted', 'started') }}"
+      enabled: yes
+      name: pulseaudio-system
+      daemon_reload: yes
+
+  - name: configure shairport-sync
+    ansible.builtin.copy:
+      src: config/shairport-sync.conf
+      dest: /etc/shairport-sync.conf
+      owner: root
+      group: root
+      mode: 0644
+    register: shairconf
+
+  - name: Make sure shairport-sync is running
+    ansible.builtin.systemd:
+      state: started
+      state: "{{ ( set_hostname.changed or shairconf.changed ) | ternary('restarted', 'started') }}"
+      enabled: yes
+      name: shairport-sync
+
+  - name: Disable WiFi Powermanagement
+    ansible.builtin.template:
+      src: templates/off-power-manager.j2
+      dest: /etc/network/if-up.d/off-power-manager 
+      owner: root
+      group: root
+      mode: 0755
+    register: powerman
+
+  - name: Restart networking
+    ansible.builtin.systemd:
+      state: restarted
+      enabled: yes
+      name: networking
+    when: powerman.changed
+
+  
