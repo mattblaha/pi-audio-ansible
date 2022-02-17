@@ -2,16 +2,17 @@
 - hosts: all
   become: yes
 
+  vars:
+    hostname: "{{ hostvars[inventory_hostname].hostname }}"
+    network_interface: "{{ ansible_default_ipv4.alias }}"
+    network_address: "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
+    allowed_networks: "{{ network_address | ipaddr('net') }}"
+
   vars_prompt:
     - name: hostname
       prompt: Hostname will be used to identify speaker in PulseAudio and Airplay
       private: no
       default: pi-speaker
-
-  vars:
-    network_interface: "{{ ansible_default_ipv4.alias }}"
-    network_address: "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
-    allowed_networks: "{{ network_address | ipaddr('net') }}"
 
   tasks:
 
