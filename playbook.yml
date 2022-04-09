@@ -46,7 +46,7 @@
       groups: pulse-access
       append: yes
 
-  - name: diable per-user PulseAudio
+  - name: disable per-user PulseAudio
     command:
       cmd: systemctl --global disable pulseaudio.service pulseaudio.socket
 
