@@ -23,13 +23,7 @@ load-module module-device-restore
 load-module module-stream-restore
 load-module module-card-restore
 
-### Automatically load driver modules depending on the hardware available
-.ifexists module-udev-detect.so
-load-module module-udev-detect
-.else
-### Use the static hardware detection module (for systems that lack udev/hal support)
-load-module module-detect
-.endif
+load-module module-alsa-sink sink_name="{{ hostname }}" device="default" tsched=1
 
 ### Load several protocols
 .ifexists module-esound-protocol-unix.so
@@ -54,7 +48,7 @@ load-module module-position-event-sounds
 
 ### Make the quiet parts louder and the louder parts quieter
 ### Similar to dialog boost on some TVs
-load-module module-ladspa-sink sink_name=normalize_volume plugin=fast_lookahead_limiter_1913 label=fastLookaheadLimiter control=20.0,-20,2.0
+load-module module-ladspa-sink sink_name={{ hostname }}_normalize_volume plugin=fast_lookahead_limiter_1913 label=fastLookaheadLimiter control=20.0,-20,2.0
 
 load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;{{ allowed_networks }}
 
