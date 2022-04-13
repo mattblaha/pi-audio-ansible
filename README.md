@@ -14,9 +14,9 @@ The most opinionated things this playbook will do:
 - disable power saving on your pi's wifi (often necessary for good streaming performance)
 
 # Requirements
-In addition to ansible, the playbook will try to automatically determine some networking variables. As a result, the machine you run ansible from, but not the Raspberry Pi target, will need the python netaddr module installed.
+The playbook will try to automatically determine some networking variables. As a result, the machine you run ansible from, but not the Raspberry Pi target, will need the python netaddr module installed.
 
-If you do not wish to install this module, you can just specify the allowed_networks variable below.
+If you do not wish to install this module, you can just specify the allowed_networks variable as shown below.
 
 On Fedora:
 
@@ -44,4 +44,11 @@ Here's an example overriding both:
 
 ```
 # ansible-playbook -i 192.168.155.235, -u pi -e allowed_networks="192.168.1.0/24;10.10.0.0/24" -e hostname="myspeaker01" playbook.yml
+```
+
+# Inventory File
+Provision or update several speakers at once using an inventory file. Modify inventory.ini.example and run ansible like this:
+
+```
+ansible-playbook -i inventory.ini -u pi playbook.yml
 ```
