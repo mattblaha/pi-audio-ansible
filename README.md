@@ -36,7 +36,7 @@ Or with pip:
 ```
 
 # Variables
-Two important variables can be configured. hostname is required, if you do not specify it, ansible will ask that you enter a name. The hostname will be used to identify the speaker from an iOS or PulseAudio client.
+Two important variables can be configured. hostname is required. The hostname will be used to identify the speaker from an iOS or PulseAudio client.
 
 The other, allowed_networks will configure PulseAudio's ACL. If not specified, we will attempt to use the speaker's network address.
 
