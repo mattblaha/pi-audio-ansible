@@ -64,7 +64,7 @@
 
   - name: Make sure PulseAudio is running
     ansible.builtin.systemd:
-      state: "{{ ( set_hostname.changed or pulseconf.changed ) | ternary('restarted', 'started') }}"
+      state: "{{ set_hostname.changed or pulseconf.changed | ternary('restarted', 'started') }}"
       enabled: yes
       name: pulseaudio-system
       daemon_reload: yes
@@ -80,7 +80,6 @@
 
   - name: Make sure shairport-sync is running
     ansible.builtin.systemd:
-      state: started
       state: "{{ ( set_hostname.changed or shairconf.changed ) | ternary('restarted', 'started') }}"
       enabled: yes
       name: shairport-sync
