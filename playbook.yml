@@ -33,6 +33,7 @@
         - pulseaudio-module-zeroconf
         - shairport-sync
         - swh-plugins
+      state: latest
 
   - name: Give shairport access to PulseAudio
     ansible.builtin.user:
@@ -41,10 +42,8 @@
       append: yes
 
   - name: disable per-user PulseAudio
-    ansible.builtin.systemd:
-      name: pulseaudio
-      enabled: no
-      scope: global
+    command:
+      cmd: systemctl --global disable pulseaudio.service pulseaudio.socket
 
   - name: Configure PulseAudio
     ansible.builtin.template:
@@ -93,13 +92,12 @@
       group: root
       mode: 0755
     register: powerman
-    notify: Restart networking
 
-  handlers:
-    - name: Restart networking
-      ansible.builtin.systemd:
-        state: restarted
-        enabled: yes
-        name: networking
+  - name: Restart networking
+    ansible.builtin.systemd:
+      state: restarted
+      enabled: yes
+      name: networking
+    when: powerman.changed
 
   
