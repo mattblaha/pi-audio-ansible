@@ -77,13 +77,23 @@
       owner: root
       group: root
       mode: 0644
-    register: shairconf
+    notify: Restart shairport-sync
+
+  - name: shairportsync systemd override for PulseAudio
+    ansible.builtin.copy:
+      src: config/shairport-override.conf
+      dest: /etc/systemd/system/shairport-sync.service.d/override.conf
+      owner: root
+      group: root
+      mode: 0644
+    notify: Restart shairport-sync
 
   - name: Make sure shairport-sync is running
     ansible.builtin.systemd:
-      state: "{{ ( set_hostname.changed or shairconf.changed ) | ternary('restarted', 'started') }}"
+      state: started
       enabled: yes
       name: shairport-sync
+      daemon_reload: yes
 
   - name: Disable WiFi Powermanagement
     ansible.builtin.template:
@@ -96,10 +106,15 @@
     notify: Restart networking
 
   handlers:
+    - name: Restart shairport-sync
+      ansible.builtin.systemd:
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+        name: shairport-sync
+
     - name: Restart networking
       ansible.builtin.systemd:
         state: restarted
         enabled: yes
         name: networking
-
-  
