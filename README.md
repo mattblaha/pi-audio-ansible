@@ -3,11 +3,11 @@ It's worth noting that this is the config I use personally, so it's extremely op
 
 If you have a Raspberry Pi (or ten) with a single audio outpout plugged into a stereo, it will work great. More complicated setups may get more complicated results, but if you need to manage a handful of speakers under that simple configuration, you may find this playbook extremely useful.
 
-(I use a Pi Zero and a USB DAC.)
+(I use a Pi Zero 2 W and a USB DAC.)
 
 The most opinionated things this playbook will do:
 
-- modify the systems hostname
+- modify the system's hostname
 - overwrite /etc/asound.conf with an extremely simple config
 - install PulseAudio and run it [in system mode](https://www.freedesktop.org/wiki/Software/PulseAudio/Documentation/User/SystemWide/)
 - configure shairport-sync to provide AirPlay via PulseAudio
