@@ -105,6 +105,22 @@
     register: powerman
     notify: Restart networking
 
+  - name: Normalize audio at night"
+    ansible.builtin.cron:
+      name: "Normalize audio at night"
+      minute: "0"
+      hour: "21-8"
+      job: "/usr/bin/pactl set-default-sink 1"
+      user: pi
+
+  - name: "Use unfiltered ALSA output during the day"
+    ansible.builtin.cron:
+      name: "Use unfiltered ALSA output during the day"
+      minute: "0"
+      hour: "9-20"
+      job: "/usr/bin/pactl set-default-sink 0"
+      user: pi
+
   handlers:
     - name: Restart shairport-sync
       ansible.builtin.systemd:
