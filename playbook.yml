@@ -1,6 +1,7 @@
 ---
-- hosts: all
-  become: yes
+- name: Configure raspbian instance as remote speaker
+  hosts: all
+  become: true
 
   vars:
     hostname: "{{ hostvars[inventory_hostname].hostname }}"
@@ -8,129 +9,127 @@
     network_address: "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
     allowed_networks: "{{ network_address | ipaddr('net') }}"
 
-
   tasks:
-
   # the hostname is used by shairport and PulseAudio to advertise
   # themselves on your network
-  - name: set hostname
-    ansible.builtin.hostname:
-      name: "{{ hostname }}"
-    register: set_hostname
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: "{{ hostname }}"
+      register: set_hostname
 
-  - name: configure ALSA
-    ansible.builtin.copy:
-      src: config/asound.conf
-      dest: /etc/asound.conf
-      owner: root
-      group: root
-      mode: 0644
+    - name: Configure ALSA
+      ansible.builtin.copy:
+        src: config/asound.conf
+        dest: /etc/asound.conf
+        owner: root
+        group: root
+        mode: "0644"
 
-  - name: Install Packages
-    apt:
-      name:
-        - pulseaudio
-        - pulseaudio-module-zeroconf
-        - shairport-sync
-        - swh-plugins
+    - name: Install Packages
+      ansible.builtin.apt:
+        name:
+          - pulseaudio
+          - pulseaudio-module-zeroconf
+          - shairport-sync
+          - swh-plugins
 
-  - name: Give shairport access to PulseAudio
-    ansible.builtin.user:
-      name: shairport-sync
-      groups: pulse-access
-      append: yes
+    - name: Give shairport access to PulseAudio
+      ansible.builtin.user:
+        name: shairport-sync
+        groups: pulse-access
+        append: true
 
-  - name: disable per-user PulseAudio
-    ansible.builtin.systemd:
-      name: pulseaudio
-      enabled: no
-      scope: global
+    - name: Disable per-user PulseAudio
+      ansible.builtin.systemd:
+        name: pulseaudio
+        enabled: false
+        scope: global
 
-  - name: Configure PulseAudio
-    ansible.builtin.template:
-      src: templates/system.pa.j2
-      dest: /etc/pulse/system.pa
-      owner: root
-      group: root
-      mode: 0644
-    register: pulseconf
+    - name: Configure PulseAudio
+      ansible.builtin.template:
+        src: templates/system.pa.j2
+        dest: /etc/pulse/system.pa
+        owner: root
+        group: root
+        mode: "0644"
+      register: pulseconf
 
-  - name: configure PulseAudio unit
-    ansible.builtin.copy:
-      src: config/pulseaudio-system.service
-      dest: /etc/systemd/system/pulseaudio-system.service
-      owner: root
-      group: root
-      mode: 0644
+    - name: Configure PulseAudio unit
+      ansible.builtin.copy:
+        src: config/pulseaudio-system.service
+        dest: /etc/systemd/system/pulseaudio-system.service
+        owner: root
+        group: root
+        mode: "0644"
 
-  - name: Make sure PulseAudio is running
-    ansible.builtin.systemd:
-      state: "{{ set_hostname.changed or pulseconf.changed | ternary('restarted', 'started') }}"
-      enabled: yes
-      name: pulseaudio-system
-      daemon_reload: yes
+    - name: Make sure PulseAudio is running
+      ansible.builtin.systemd:
+        state: "{{ set_hostname.changed or pulseconf.changed | ternary('restarted', 'started') }}"
+        enabled: true
+        name: pulseaudio-system
+        daemon_reload: true
 
-  - name: configure shairport-sync
-    ansible.builtin.copy:
-      src: config/shairport-sync.conf
-      dest: /etc/shairport-sync.conf
-      owner: root
-      group: root
-      mode: 0644
-    notify: Restart shairport-sync
+    - name: Configure shairport-sync
+      ansible.builtin.copy:
+        src: config/shairport-sync.conf
+        dest: /etc/shairport-sync.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart shairport-sync
 
-  - name: shairportsync systemd override for PulseAudio
-    ansible.builtin.copy:
-      src: config/shairport-override.conf
-      dest: /etc/systemd/system/shairport-sync.service.d/override.conf
-      owner: root
-      group: root
-      mode: 0644
-    notify: Restart shairport-sync
+    - name: Shairportsync systemd override for PulseAudio
+      ansible.builtin.copy:
+        src: config/shairport-override.conf
+        dest: /etc/systemd/system/shairport-sync.service.d/override.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart shairport-sync
 
-  - name: Make sure shairport-sync is running
-    ansible.builtin.systemd:
-      state: started
-      enabled: yes
-      name: shairport-sync
-      daemon_reload: yes
+    - name: Make sure shairport-sync is running
+      ansible.builtin.systemd:
+        state: started
+        enabled: true
+        name: shairport-sync
+        daemon_reload: true
 
-  - name: Disable WiFi Powermanagement
-    ansible.builtin.template:
-      src: templates/off-power-manager.j2
-      dest: /etc/network/if-up.d/off-power-manager 
-      owner: root
-      group: root
-      mode: 0755
-    register: powerman
-    notify: Restart networking
+    - name: Disable WiFi Powermanagement
+      ansible.builtin.template:
+        src: templates/off-power-manager.j2
+        dest: /etc/network/if-up.d/off-power-manager
+        owner: root
+        group: root
+        mode: "0755"
+      register: powerman
+      notify: Restart networking
 
-  - name: Normalize audio at night"
-    ansible.builtin.cron:
-      name: "Normalize audio at night"
-      minute: "0"
-      hour: "21-8"
-      job: "/usr/bin/pactl set-default-sink 1"
-      user: pi
+    - name: Normalize audio at night
+      ansible.builtin.cron:
+        name: Normalize audio at night
+        minute: "0"
+        hour: 21-8
+        job: /usr/bin/pactl set-default-sink 1
+        user: pi
 
-  - name: "Use unfiltered ALSA output during the day"
-    ansible.builtin.cron:
-      name: "Use unfiltered ALSA output during the day"
-      minute: "0"
-      hour: "9-20"
-      job: "/usr/bin/pactl set-default-sink 0"
-      user: pi
+    - name: Use unfiltered ALSA output during the day
+      ansible.builtin.cron:
+        name: Use unfiltered ALSA output during the day
+        minute: "0"
+        hour: 9-20
+        job: /usr/bin/pactl set-default-sink 0
+        user: pi
 
   handlers:
     - name: Restart shairport-sync
       ansible.builtin.systemd:
         state: restarted
-        enabled: yes
-        daemon_reload: yes
+        enabled: true
+        daemon_reload: true
         name: shairport-sync
 
     - name: Restart networking
       ansible.builtin.systemd:
         state: restarted
-        enabled: yes
+        enabled: true
         name: networking
