@@ -7,7 +7,7 @@
     hostname: "{{ hostvars[inventory_hostname].hostname }}"
     network_interface: "{{ ansible_default_ipv4.alias }}"
     network_address: "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
-    allowed_networks: "{{ network_address | ipaddr('net') }}"
+    allowed_networks: "{{ network_address | ansible.utils.ipaddr }}"
 
   tasks:
   # the hostname is used by shairport and PulseAudio to advertise
