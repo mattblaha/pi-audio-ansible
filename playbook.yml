@@ -108,7 +108,7 @@
       ansible.builtin.cron:
         name: Normalize audio at night
         minute: "0"
-        hour: 21-8
+        hour: 21-23,0-8
         job: /usr/bin/pactl set-default-sink 1
         user: pi
 
