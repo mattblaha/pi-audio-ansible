@@ -54,7 +54,7 @@ load-module module-position-event-sounds
 
 ### Make the quiet parts louder and the louder parts quieter
 ### Similar to dialog boost on some TVs
-load-module module-ladspa-sink sink_name={{ hostname }}_normalize_volume plugin=fast_lookahead_limiter_1913 label=fastLookaheadLimiter control=20.0,-20,2.0
+load-module module-ladspa-sink sink_name={{ hostname }}_normalize_volume plugin=fast_lookahead_limiter_1913 label=fastLookaheadLimiter control=3,-20,1.0
 
 load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;{{ allowed_networks }}
 
