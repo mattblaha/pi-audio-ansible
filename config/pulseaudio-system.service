@@ -4,9 +4,8 @@
 # enable on boot: systemctl enable pulseaudio.service 
 [Unit]
 Description=Pulseaudio sound server
-After=avahi-daemon.service network.target sound.target alsa-restore.service dev-snd-controlC1.device 
+After=avahi-daemon.service network.target sound.target
 Wants=sound.target alsa-restore.service
-Requires=dev-snd-controlC1.device
 [Service]
 ExecStart=/usr/bin/pulseaudio --system --disallow-exit --disallow-module-loading --fail
 ExecReload=/bin/kill -HUP $MAINPID
