@@ -132,4 +132,4 @@
       ansible.builtin.systemd:
         state: restarted
         enabled: true
-        name: networking
+        name: NetworkManager
