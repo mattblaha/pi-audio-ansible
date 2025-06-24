@@ -78,6 +78,12 @@
         mode: "0644"
       notify: Restart shairport-sync
 
+    - name: Create directory shairport-sync override
+      ansible.builtin.file:
+        path: /etc/systemd/system/shairport-sync.service.d
+        state: directory
+        mode: "0755"
+
     - name: Shairportsync systemd override for PulseAudio
       ansible.builtin.copy:
         src: config/shairport-override.conf
