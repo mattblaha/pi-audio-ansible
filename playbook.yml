@@ -101,12 +101,12 @@
         daemon_reload: true
 
     - name: Disable WiFi Powermanagement
-      ansible.builtin.template:
-        src: templates/off-power-manager.j2
-        dest: /etc/network/if-up.d/off-power-manager
+      ansible.builtin.copy:
+        src: config/power.conf
+        dest: /etc/NetworkManager/conf.d/power.conf
         owner: root
         group: root
-        mode: "0755"
+        mode: "0644"
       register: powerman
       notify: Restart networking
 
