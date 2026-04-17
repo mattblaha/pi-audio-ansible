@@ -33,11 +33,14 @@
           - shairport-sync
           - swh-plugins
 
-    - name: Give shairport access to PulseAudio
+    - name: Give users access to PulseAudio
       ansible.builtin.user:
-        name: shairport-sync
+        name: "{{ item }}"
         groups: pulse-access
         append: true
+      loop:
+        - shairport-sync
+        - pi
 
     - name: Disable per-user PulseAudio
       ansible.builtin.systemd:
