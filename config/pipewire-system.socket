@@ -1,0 +1,14 @@
+[Unit]
+Description=PipeWire Multimedia System Socket
+
+[Socket]
+ListenStream=%t/pipewire/pipewire-0
+RuntimeDirectory=pipewire
+RuntimeDirectoryMode=0755
+SocketMode=0660
+SocketUser=root
+SocketGroup=pipewire
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

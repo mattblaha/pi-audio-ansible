@@ -1,0 +1,117 @@
+context.modules = [
+  { name = libpipewire-module-filter-chain
+    args = {
+      node.description = "Night Normalizer"
+      media.name       = "Night Normalizer"
+
+      filter.graph = {
+        nodes = [
+          # 1 ── high-pass. Low bass crosses walls; 80 Hz also buys headroom.
+          { type = builtin name = hp_l label = bq_highpass
+            control = { "Freq" = 80  "Q" = 0.707 } }
+          { type = builtin name = hp_r label = bq_highpass
+            control = { "Freq" = 80  "Q" = 0.707 } }
+
+          # 2 ── loudness meter, tapped BEFORE any gain is applied
+          { type = ebur128 name = meter label = ebur128
+            config = { max-history = 10.0 } }
+
+          # 3 ── LUFS -> gain, one per channel (identical gain = stereo linked)
+          { type = ebur128 name = lufsL label = lufs2gain
+            control = { "Target LUFS" = -22.0 } }
+          { type = ebur128 name = lufsR label = lufs2gain
+            control = { "Target LUFS" = -22.0 } }
+
+          # 4 ── ceiling on the AGC: never boost more than +9 dB, never
+          #      cut more than 12 dB. Stops silence/noise-floor blow-up.
+          { type = builtin name = gcapL label = clamp
+            control = { "Min" = 0.25  "Max" = 3.0 } }
+          { type = builtin name = gcapR label = clamp
+            control = { "Min" = 0.25  "Max" = 3.0 } }
+
+          # 5 ── the gain stage
+          { type = builtin name = vol_l label = linear }
+          { type = builtin name = vol_r label = linear }
+
+          # 6 ── fast compressor
+          { type = lv2 name = comp
+            plugin = "http://calf.sourceforge.net/plugins/Compressor"
+            control = {
+              threshold = 0.020     # -34 dBFS
+              ratio     = 4.0
+              attack    = 8.0       # ms
+              release   = 250.0     # ms
+              makeup    = 2.82      # +9 dB
+              # knee, rms, stereo_link: check exact symbols with
+              #   lv2info http://calf.sourceforge.net/plugins/Compressor
+              # and add them here if you want softer knees / RMS detection.
+            } }
+
+          # 7 ── brickwall limiter: absolute ceiling, lookahead, 4x oversampled
+          { type = lv2 name = lim
+            plugin = "http://calf.sourceforge.net/plugins/Limiter"
+            control = {
+              level_in     = 1.0
+              limit        = 0.708    # linear = -3 dBFS
+              attack       = 5.0      # ms of LOOKAHEAD
+              release      = 50.0     # ms
+              oversampling = 4        # 4x: catches inter-sample peaks
+              asc          = 0
+              auto_level   = 0        # MUST be 0 - would undo the ceiling
+              level_out    = 1.0      # MUST be 1.0 - applied after the clamp
+            } }
+
+          # 8 ── backstop only; should never trigger now
+          { type = builtin name = ceil_l label = clamp
+            control = { "Min" = -0.891 "Max" = 0.891 } }
+          { type = builtin name = ceil_r label = clamp
+            control = { "Min" = -0.891 "Max" = 0.891 } }
+        ]
+
+        links = [
+          { output = "hp_l:Out"      input = "meter:In FL" }
+          { output = "hp_r:Out"      input = "meter:In FR" }
+          { output = "meter:Out FL"  input = "vol_l:In" }
+          { output = "meter:Out FR"  input = "vol_r:In" }
+
+          # AGC: measure -> convert -> cap -> apply
+          { output = "meter:Shorttem LUFS" input = "lufsL:LUFS" }
+          { output = "meter:Shorttem LUFS" input = "lufsR:LUFS" }
+          { output = "lufsL:Gain"    input = "gcapL:Control" }
+          { output = "lufsR:Gain"    input = "gcapR:Control" }
+          { output = "gcapL:Notify"  input = "vol_l:Mult" }
+          { output = "gcapR:Notify"  input = "vol_r:Mult" }
+
+          { output = "vol_l:Out"     input = "comp:in_l" }
+          { output = "vol_r:Out"     input = "comp:in_r" }
+          { output = "comp:out_l"    input = "ceil_l:In" }
+          { output = "comp:out_r"    input = "ceil_r:In" }
+        ]
+
+        inputs  = [ "hp_l:In"  "hp_r:In" ]
+        outputs = [ "ceil_l:Out" "ceil_r:Out" ]
+      }
+
+
+capture.props = {
+  node.name       = "night_normalize_sink"
+  node.description = "Night Normalize Sink"
+  media.class     = "Audio/Sink"
+  node.group      = "night-normalize"
+  node.link-group = "night-normalize"
+  audio.position  = "FL,FR"
+}
+
+playback.props = {
+  node.name         = "night_normalize_output"
+  media.class       = "Stream/Output/Audio"
+  node.group        = "night-normalize"
+  node.link-group   = "night-normalize"
+  target.object     = "{{ pipewire_output_node }}" 
+  stream.dont-remix = true
+  node.passive      = true
+}
+
+    }
+  }
+]

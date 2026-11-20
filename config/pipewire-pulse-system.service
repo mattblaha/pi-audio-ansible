@@ -1,0 +1,14 @@
+[Unit]
+Description=PipeWire PulseAudio Server
+Requires=pipewire-system.socket
+After=pipewire-system.service
+BindsTo=pipewire-system.service
+
+[Service]
+Type=simple
+Environment=XDG_RUNTIME_DIR=/run/pipewire
+ExecStart=/usr/bin/pipewire-pulse
+Restart=on-failure
+
+[Install]
+WantedBy=pipewire-system.service

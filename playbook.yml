@@ -25,52 +25,115 @@
         group: root
         mode: "0644"
 
-    - name: Install Packages
+    - name: Remove PulseAudio Packages
       ansible.builtin.apt:
         name:
           - pulseaudio
           - pulseaudio-module-zeroconf
+        state: absent
+
+    - name: Install Packages
+      ansible.builtin.apt:
+        name:
           - shairport-sync
+          - pipewire
+          - wireplumber
+          - pipewire-pulse
           - swh-plugins
 
-    - name: Give users access to PulseAudio
+    - name: Give users access to PipeWire
       ansible.builtin.user:
         name: "{{ item }}"
-        groups: pulse-access
+        groups:
+          - pipewire
         append: true
       loop:
         - shairport-sync
         - pi
 
-    - name: Disable per-user PulseAudio
+    - name: Disable per-user PipeWire
       ansible.builtin.systemd:
-        name: pulseaudio
+        name: "{{ item }}"
         enabled: false
+        masked: true
         scope: global
+      loop:
+        - pipewire.socket
+        - pipewire
+        - pipewire-pulse.socket
+        - pipewire-pulse
+        - wireplumber
+
+    - name: Create pipewire .conf.d dirs
+      ansible.builtin.file:
+        path: /etc/pipewire/{{ item }}
+        state: directory
+        mode: "0755"
+      loop:
+        - pipewire-pulse.conf.d
+        - pipewire.conf.d
 
     - name: Configure PulseAudio
       ansible.builtin.template:
-        src: templates/system.pa.j2
-        dest: /etc/pulse/system.pa
+        src: config/pipewire-pulse.conf
+        dest: /etc/pipewire/pipewire-pulse.conf.d/listen.conf
         owner: root
         group: root
         mode: "0644"
       register: pulseconf
 
-    - name: Configure PulseAudio unit
+    - name: Add systemd Units
       ansible.builtin.copy:
-        src: config/pulseaudio-system.service
-        dest: /etc/systemd/system/pulseaudio-system.service
+        src: "config/{{ item }}"
+        dest: "/etc/systemd/system/{{ item }}"
         owner: root
         group: root
         mode: "0644"
+      loop:
+        - pipewire-system.socket
+        - pipewire-system.service
+        - pipewire-pulse-system.socket
+        - pipewire-pulse-system.service
+        - wireplumber-system.service
 
-    - name: Make sure PulseAudio is running
+    - name: Make sure WirePlumber services are running
       ansible.builtin.systemd:
         state: "{{ set_hostname.changed or pulseconf.changed | ternary('restarted', 'started') }}"
         enabled: true
-        name: pulseaudio-system
+        name: "{{ item }}"
         daemon_reload: true
+      loop:
+        - pipewire-system.socket
+        - pipewire-system.service
+        - pipewire-pulse-system.socket
+        - pipewire-pulse-system.service
+        - wireplumber-system.service
+
+    - name: Dump sinks as JSON
+      ansible.builtin.command:
+        argv: [pactl, -f, json, list, sinks]
+      register: sinks
+      changed_when: false
+      check_mode: false
+      retries: 10
+      delay: 2
+      until: sinks.rc == 0
+
+    - name: Collect sinks whose device.api is alsa
+      ansible.builtin.set_fact:
+        _alsa: >-
+          {%- set out = [] -%}
+          {%- for s in sinks.stdout | from_json -%}
+          {%- if s.properties is defined and s.properties['device.api'] | default('') == 'alsa' -%}
+          {%- set _ = out.append(s.name) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ out }}
+
+    - name: Use first ALSA device as PipeWire default
+      ansible.builtin.set_fact:
+        pipewire_output_node: "{{ _alsa | first }}"
+      when: pipewire_output_node is not defined
 
     - name: Configure shairport-sync
       ansible.builtin.copy:
@@ -80,6 +143,16 @@
         group: root
         mode: "0644"
       notify: Restart shairport-sync
+
+    - name: Configure PipeWire night filter
+      ansible.builtin.template:
+        src: templates/50-night-normalize.conf.j2
+        dest: /etc/pipewire/pipewire.conf.d/50-night-normalize.conf
+        owner: root
+        group: root
+        mode: "0644"
+      register: plumbconf
+      notify: Restart pipewire
 
     - name: Create directory shairport-sync override
       ansible.builtin.file:
@@ -118,7 +191,7 @@
         name: Normalize audio at night
         minute: "0"
         hour: 21-23,0-8
-        job: /usr/bin/pactl set-default-sink 1
+        job: /usr/bin/pactl set-default-sink night_normalize_sink
         user: pi
 
     - name: Use unfiltered ALSA output during the day
@@ -126,7 +199,7 @@
         name: Use unfiltered ALSA output during the day
         minute: "0"
         hour: 9-20
-        job: /usr/bin/pactl set-default-sink 0
+        job: "/usr/bin/pactl set-default-sink {{ pipewire_output_node }}"
         user: pi
 
   handlers:
@@ -136,6 +209,13 @@
         enabled: true
         daemon_reload: true
         name: shairport-sync
+
+    - name: Restart pipewire
+      ansible.builtin.systemd:
+        state: restarted
+        enabled: true
+        daemon_reload: true
+        name: pipewire-system
 
     - name: Restart networking
       ansible.builtin.systemd:

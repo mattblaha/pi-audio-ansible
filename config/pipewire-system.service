@@ -1,0 +1,12 @@
+[Unit]
+Description=PipeWire Multimedia Service
+Requires=pipewire-system.socket
+After=pipewire-system.socket
+
+[Service]
+Type=simple
+Environment=XDG_RUNTIME_DIR=/run/pipewire
+RuntimeDirectory=pipewire
+RuntimeDirectoryMode=0755
+ExecStart=/usr/bin/pipewire
+Restart=on-failure
