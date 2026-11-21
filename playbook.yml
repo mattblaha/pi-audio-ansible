@@ -40,6 +40,8 @@
           - wireplumber
           - pipewire-pulse
           - swh-plugins
+          - libspa-0.2-modules
+          - calf-plugins
 
     - name: Give users access to PipeWire
       ansible.builtin.user:
