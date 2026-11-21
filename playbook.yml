@@ -86,6 +86,21 @@
         - pipewire-pulse.conf.d
         - pipewire.conf.d
 
+    - name: Create pipewire .conf.d dirs
+      ansible.builtin.file:
+        path: /etc/wireplumber/wireplumber.conf.d
+        state: directory
+        mode: "0755"
+
+    - name: Set default volume
+      ansible.builtin.copy:
+        src: config/50-volume.conf
+        dest: /etc/wireplumber/wireplumber.conf.d/50-volume.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart wireplumber
+
     - name: Configure PulseAudio
       ansible.builtin.copy:
         src: config/pipewire-pulse.conf
@@ -243,6 +258,13 @@
         enabled: true
         daemon_reload: true
         name: pipewire-filter-chain
+
+    - name: Restart wireplumber
+      ansible.builtin.systemd:
+        state: restarted
+        enabled: true
+        daemon_reload: true
+        name: wireplumber-system
 
     - name: Restart networking
       ansible.builtin.systemd:
