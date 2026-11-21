@@ -1,0 +1,16 @@
+[Unit]
+Description=Night Normalizer Filter Chain
+Requires=pipewire-system.service
+After=pipewire-system.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Environment=XDG_RUNTIME_DIR=/run/pipewire
+Environment=PIPEWIRE_RUNTIME_DIR=/run/pipewire
+ExecStart=/usr/bin/pipewire -c filter-chain.conf
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

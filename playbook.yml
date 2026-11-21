@@ -108,6 +108,7 @@
         - pipewire-pulse-system.socket
         - pipewire-pulse-system.service
         - wireplumber-system.service
+        - pipewire-filter-chain.service
 
     - name: Make sure WirePlumber services are running
       ansible.builtin.systemd:
@@ -157,15 +158,28 @@
         mode: "0644"
       notify: Restart shairport-sync
 
+    - name: Create /etc/pipewire/filter-chain.conf.d
+      ansible.builtin.file:
+        path: /etc/pulse
+        state: directory
+        mode: "0755"
+
     - name: Configure PipeWire night filter
       ansible.builtin.template:
         src: templates/50-night-normalize.conf.j2
-        dest: /etc/pipewire/pipewire.conf.d/50-night-normalize.conf
+        dest: /etc/pipewire/filter-chain.conf.d/filter-chain.conf
         owner: root
         group: root
         mode: "0644"
       register: plumbconf
-      notify: Restart pipewire
+      notify: Restart pipewire filter chain
+
+    - name: Make sure WirePlumber filter chain is running
+      ansible.builtin.systemd:
+        state: "{{ set_hostname.changed or pulseconf.changed | ternary('restarted', 'started') }}"
+        enabled: true
+        name: "pipewire-filter-chain"
+        daemon_reload: true
 
     - name: Create directory shairport-sync override
       ansible.builtin.file:
@@ -223,12 +237,12 @@
         daemon_reload: true
         name: shairport-sync
 
-    - name: Restart pipewire
+    - name: Restart pipewire filter chain
       ansible.builtin.systemd:
         state: restarted
         enabled: true
         daemon_reload: true
-        name: pipewire-system
+        name: pipewire-filter-chain
 
     - name: Restart networking
       ansible.builtin.systemd:
