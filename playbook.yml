@@ -64,6 +64,20 @@
         - pipewire-pulse
         - wireplumber
 
+    - name: Create /etc/pulse
+      ansible.builtin.file:
+        path: /etc/pulse
+        state: directory
+        mode: "0755"
+
+    - name: Configure PulseAudio clients
+      ansible.builtin.copy:
+        src: config/client.conf
+        dest: /etc/pulse/client.conf
+        owner: root
+        group: root
+        mode: "0644"
+
     - name: Create pipewire .conf.d dirs
       ansible.builtin.file:
         path: /etc/pipewire/{{ item }}
@@ -74,7 +88,7 @@
         - pipewire.conf.d
 
     - name: Configure PulseAudio
-      ansible.builtin.template:
+      ansible.builtin.copy:
         src: config/pipewire-pulse.conf
         dest: /etc/pipewire/pipewire-pulse.conf.d/listen.conf
         owner: root
