@@ -5,6 +5,7 @@
 
   vars:
     hostname: "{{ hostvars[inventory_hostname].hostname }}"
+    desired_timezone: "{{ hostvars[inventory_hostname].timezone |default('America/Chicago') }}"
 
   tasks:
   # the hostname is used by shairport and PulseAudio to advertise
@@ -13,6 +14,22 @@
       ansible.builtin.hostname:
         name: "{{ hostname }}"
       register: set_hostname
+
+  # because the filter is activated on a schedule, the timezone
+  # matters a lot
+    - name: Get current timezone
+      ansible.builtin.command:
+        cmd: timedatectl show --property=Timezone --value
+      register: tz_current
+      changed_when: false
+      check_mode: false
+
+    - name: Set timezone if it differs from desired
+      ansible.builtin.command:
+        cmd: timedatectl set-timezone {{ desired_timezone }}
+      when: tz_current.stdout | trim != desired_timezone
+      changed_when: true
+
 
     - name: Configure ALSA
       ansible.builtin.copy:

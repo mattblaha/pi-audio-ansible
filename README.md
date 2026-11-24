@@ -19,8 +19,10 @@ The most opinionated things this playbook will do:
 # Variables
 The hostname, which will identify the speaker for Airplay, can be configured with a variable.
 
+The timezone can also be configured. Because the filter is activated on a schedule, the timezone being correct is important.
+
 ```
-# ansible-playbook -i 192.168.155.235, -u pi -e hostname="myspeaker01" playbook.yml
+# ansible-playbook -i 192.168.155.235, -u pi -e hostname="myspeaker01" -e timezone="America/Chicago" playbook.yml
 ```
 
 # Inventory File
